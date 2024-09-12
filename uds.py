@@ -103,6 +103,8 @@ def compare_dir_to_dataset_version(
         if change_reason:
             print(f"{name}: changed – {change_reason}, need to upload")
             new_name_to_path[name] = local_file_path
+            # Make sure we don't keep the old version by any chance
+            exclude_names.add(name)
         else:
             print(f"{name}: no changes detected. Keeping in dataset")
             old_name_to_datum_id[name] = datum_info["id"]
