@@ -1,0 +1,24 @@
+- step:
+    name: Update dataset
+    image: python:3.12
+    command: |
+      pip install --disable-pip-version-check --root-user-action=ignore -q uv
+      uv sync -q
+      uv run python uds.py
+    parameters:
+      - name: dataset-id
+        description: Dataset to update
+        default: "00000000-0000-0000-0000-000000000000"
+      - name: new-file-names
+        description: New file names
+        multiple: repeat
+        default:
+          - file1.csv
+          - file2.csv
+          - file3.csv
+      - name: new-file-contents
+        description: New file contents (repeated if less than new-file-names)
+        multiple: repeat
+        default:
+          - foofoo
+          - barbar

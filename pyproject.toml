@@ -1,0 +1,20 @@
+[project]
+name = "dataset-update-example"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "httpx>=0.27.2",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.6.4",
+    "valohai-cli>=0.26.0",
+]
+
+[tool.ruff.lint]
+extend-select = [
+    "ANN",
+    "COM",
+]
