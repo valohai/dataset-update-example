@@ -1,10 +1,7 @@
 - step:
-    name: Update dataset
-    image: python:3.12
-    command: |
-      pip install --disable-pip-version-check --root-user-action=ignore -q uv
-      uv sync -q
-      uv run python uds.py
+    name: Phase1
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    command: uv run -q phase1.py
     parameters:
       - name: dataset-id
         description: Dataset to update
@@ -22,3 +19,21 @@
         default:
           - foofoo
           - barbar
+- step:
+    name: Phase2
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    command: uv run -q phase2.py
+    inputs:
+      - name: manifest
+        optional: false
+- pipeline:
+    name: Processing Pipeline
+    nodes:
+      - name: GenerateManifest
+        type: execution
+        step: Phase1
+      - name: CreateDatasetVersion
+        type: execution
+        step: Phase2
+    edges:
+      - [GenerateManifest.output._dataset-manifest*, CreateDatasetVersion.input.manifest]

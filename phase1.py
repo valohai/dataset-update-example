@@ -10,20 +10,7 @@ from collections.abc import Iterator
 import httpx
 from attr import dataclass
 
-
-def get_api_client() -> httpx.Client:
-    """
-    Get an HTTP client that is authenticated with the Valohai API token,
-    and configured to use the base URL from the environment.
-    """
-    client = httpx.Client(
-        base_url=os.environ.get("VH_API_BASE_URL", "https://app.valohai.com/"),
-        timeout=5,
-    )
-
-    valohai_api_token = os.environ["VH_API_TOKEN"]
-    client.headers["Authorization"] = f"Token {valohai_api_token}"
-    return client
+from helpers import get_api_client, MANIFEST_FILENAME
 
 
 @dataclass(frozen=True)
@@ -141,35 +128,25 @@ def do_dataset_compare_and_move_content(
         version_files=old_version_dict["files"] if old_version_dict else [],
     )
 
-    # Generate a sidecar data that tells Valohai to use the old version as a base
-    # and exclude the files that we don't want to keep. This is a bit of a hack;
-    # we should have a better way to absolutely specify the contents of a new version
-    # in terms of (some) outputs of an execution, and (some) contents of an existing dataset.
-    sidecar_data = json.dumps(
-        {
-            "valohai.dataset-versions": [
-                {
-                    "uri": new_version_uri,
-                    "from": old_version_uri,
-                    "exclude": sorted(cr.exclude_names),
-                },
-            ],
-        },
-    )
-    if not cr.new_name_to_path:
-        # Hack – if there are no new files to upload,
-        # we need to upload a dummy file to trigger the dataset version creation...
-        marker = output_dir / "dataset-marker.txt"
-        marker.write_text(timestamp.isoformat())
-        cr.new_name_to_path[marker.name] = marker
+    # Generate a manifest file
+    manifest_data = {
+        "dataset_id": dataset_id,
+        "exclude": sorted(cr.exclude_names),
+        "execution_id": os.environ.get("VH_EXECUTION_ID"),
+        "keep": cr.old_name_to_datum_id,
+        "new": sorted(cr.new_name_to_path),
+        "new_version_name": new_version_name,
+        "new_version_uri": new_version_uri,
+        "old_version_id": old_version_dict["id"] if old_version_dict else None,
+        "old_version_uri": old_version_uri,
+    }
+    (output_dir / MANIFEST_FILENAME).write_text(json.dumps(manifest_data))
 
+    # Move the new files into place
     for name, path in cr.new_name_to_path.items():
         output_path = output_dir / name
         if path != output_path:
             shutil.move(path, output_path)
-        output_path.with_suffix(
-            f"{output_path.suffix}.metadata.json",
-        ).write_text(sidecar_data)
 
 
 def generate_new_content(
